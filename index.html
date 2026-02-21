@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sebehodnocení Product Managera</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  :root {
+    --bg: #f8f7f4; --card: #ffffff; --text: #1a1a2e; --muted: #6b7280;
+    --accent: #6366f1; --accent2: #818cf8; --accent-bg: #eef2ff;
+    --border: #e5e7eb; --green: #10b981; --amber: #f59e0b; --red: #ef4444;
+    --shadow: 0 1px 3px rgba(0,0,0,0.06);
+    --shadow-lg: 0 4px 16px rgba(0,0,0,0.1);
+  }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); line-height: 1.5; }
+
+  /* Header */
+  .header {
+    background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #fff; padding: 40px 24px 32px; text-align: center;
+  }
+  .header h1 { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+  .header p { opacity: 0.8; font-size: 15px; max-width: 500px; margin: 0 auto; }
+
+  .container { max-width: 780px; margin: 0 auto; padding: 0 16px; }
+
+  /* Progress bar */
+  .progress-wrap {
+    position: sticky; top: 0; z-index: 50; background: var(--bg);
+    padding: 12px 0 8px; border-bottom: 1px solid var(--border);
+  }
+  .progress-bar-outer {
+    height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;
+  }
+  .progress-bar-inner {
+    height: 100%; background: linear-gradient(90deg, #6366f1, #a855f7);
+    border-radius: 4px; transition: width 0.4s ease;
+  }
+  .progress-text { font-size: 13px; color: var(--muted); margin-top: 4px; display: flex; justify-content: space-between; }
+
+  /* Scale legend */
+  .scale-legend {
+    background: var(--accent-bg); border: 1px solid #c7d2fe; border-radius: 12px;
+    padding: 16px 20px; margin: 20px 0;
+  }
+  .scale-legend h3 { font-size: 14px; font-weight: 600; margin-bottom: 8px; color: var(--accent); }
+  .scale-legend .scale-items { display: grid; gap: 4px; }
+  .scale-item { font-size: 13px; display: flex; gap: 8px; }
+  .scale-num { font-weight: 700; color: var(--accent); min-width: 32px; }
+
+  /* Section */
+  .section { margin: 28px 0; }
+  .section-header {
+    font-size: 18px; font-weight: 700; padding: 12px 0;
+    border-bottom: 2px solid var(--accent); margin-bottom: 16px;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .section-badge {
+    font-size: 11px; background: var(--accent); color: #fff;
+    padding: 2px 10px; border-radius: 10px; font-weight: 600;
+  }
+
+  /* Question card */
+  .q-card {
+    background: var(--card); border-radius: 12px; padding: 18px 20px;
+    margin-bottom: 12px; box-shadow: var(--shadow); border: 1px solid var(--border);
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .q-card.answered { border-color: #c7d2fe; }
+  .q-card .q-num { font-size: 12px; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+  .q-card .q-text { font-size: 15px; font-weight: 500; margin-bottom: 14px; }
+  .q-card .q-original { font-size: 12px; color: var(--muted); font-style: italic; margin-bottom: 12px; }
+
+  /* Slider */
+  .slider-wrap { position: relative; padding: 0 4px; }
+  .slider-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); margin-bottom: 6px; }
+  .slider-ticks { display: flex; justify-content: space-between; padding: 0 6px; margin-bottom: 2px; }
+  .slider-ticks span { width: 1px; height: 6px; background: var(--border); }
+  input[type="range"] {
+    -webkit-appearance: none; width: 100%; height: 6px; border-radius: 3px;
+    background: var(--border); outline: none; cursor: pointer;
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    cursor: grab; transition: transform 0.15s;
+  }
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.15); }
+  input[type="range"]::-moz-range-thumb {
+    width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accent); border: 3px solid #fff; box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    cursor: grab;
+  }
+  .slider-value {
+    text-align: center; font-size: 20px; font-weight: 700; color: var(--accent);
+    margin-top: 6px; min-height: 30px;
+  }
+  .slider-value.empty { color: var(--border); font-size: 14px; font-weight: 400; }
+
+  /* Results */
+  .results-wrap { display: none; margin: 32px 0 60px; }
+  .results-wrap.visible { display: block; }
+  .results-header { text-align: center; margin-bottom: 28px; }
+  .results-header h2 { font-size: 24px; font-weight: 700; }
+  .results-header p { color: var(--muted); }
+
+  .overall-score {
+    text-align: center; background: linear-gradient(135deg, #4f46e5, #7c3aed);
+    color: #fff; border-radius: 16px; padding: 32px; margin-bottom: 24px;
+  }
+  .overall-score .big { font-size: 56px; font-weight: 800; line-height: 1; }
+  .overall-score .of { font-size: 20px; opacity: 0.7; }
+  .overall-score .label { font-size: 14px; opacity: 0.7; margin-top: 4px; }
+  .overall-score .level { font-size: 18px; font-weight: 600; margin-top: 8px; background: rgba(255,255,255,0.2); display: inline-block; padding: 4px 16px; border-radius: 20px; }
+
+  .cat-results { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  @media (max-width: 600px) { .cat-results { grid-template-columns: 1fr; } }
+  .cat-card {
+    background: var(--card); border-radius: 12px; padding: 18px; box-shadow: var(--shadow);
+    border: 1px solid var(--border);
+  }
+  .cat-card .cat-name { font-size: 14px; font-weight: 600; margin-bottom: 8px; }
+  .cat-card .cat-bar-outer { height: 8px; background: var(--border); border-radius: 4px; overflow: hidden; margin-bottom: 6px; }
+  .cat-card .cat-bar-inner { height: 100%; border-radius: 4px; transition: width 0.6s ease; }
+  .cat-card .cat-score { font-size: 20px; font-weight: 700; }
+  .cat-card .cat-level { font-size: 12px; color: var(--muted); }
+
+  /* Buttons */
+  .btn-row { text-align: center; margin: 24px 0; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .btn {
+    padding: 12px 28px; border: none; border-radius: 12px; font-size: 15px;
+    font-weight: 600; cursor: pointer; transition: all 0.15s;
+  }
+  .btn-primary { background: var(--accent); color: #fff; }
+  .btn-primary:hover { background: var(--accent2); transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+  .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text); }
+  .btn-outline:hover { border-color: var(--accent); color: var(--accent); }
+  .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Radar chart */
+  .radar-wrap { text-align: center; margin: 24px 0; }
+  .radar-wrap canvas { max-width: 100%; }
+
+  /* Strengths / Weaknesses */
+  .sw-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 24px; }
+  @media (max-width: 600px) { .sw-grid { grid-template-columns: 1fr; } }
+  .sw-card { background: var(--card); border-radius: 12px; padding: 18px; box-shadow: var(--shadow); border: 1px solid var(--border); }
+  .sw-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
+  .sw-card ul { list-style: none; }
+  .sw-card li { font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .sw-card li:last-child { border: none; }
+  .sw-card li .sw-score { float: right; font-weight: 600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Sebehodnocení Product Managera</h1>
+  <p>Ohodnoťte své dovednosti na škále 1–10. Po zodpovězení všech otázek uvidíte podrobné výsledky.</p>
+</div>
+
+<div class="container">
+  <div class="progress-wrap">
+    <div class="progress-bar-outer"><div class="progress-bar-inner" id="progressBar" style="width:0%"></div></div>
+    <div class="progress-text">
+      <span id="progressText">0 / 93 zodpovězeno</span>
+      <span id="progressPct">0 %</span>
+    </div>
+  </div>
+
+  <div class="scale-legend">
+    <h3>Hodnotící škála (1–10)</h3>
+    <div class="scale-items">
+      <div class="scale-item"><span class="scale-num">1–2</span> Minimální nebo žádné znalosti a zkušenosti — cítíte se mimo svou oblast.</div>
+      <div class="scale-item"><span class="scale-num">3–4</span> Omezené znalosti a zkušenosti — často vyhledáváte podporu a rady.</div>
+      <div class="scale-item"><span class="scale-num">5–6</span> Dostatečné znalosti a zkušenosti — zvládnete práci splnit.</div>
+      <div class="scale-item"><span class="scale-num">7–8</span> Plně kompetentní — máte znalosti a dovednosti a používáte je s jistotou.</div>
+      <div class="scale-item"><span class="scale-num">9–10</span> Expert — jste považováni za skutečného odborníka a můžete mentorovat ostatní.</div>
+    </div>
+  </div>
+
+  <div id="questionsContainer"></div>
+
+  <div class="btn-row">
+    <button class="btn btn-primary" id="showResults" disabled>Zobrazit výsledky</button>
+    <button class="btn btn-outline" id="resetAll">Resetovat vše</button>
+  </div>
+
+  <div class="results-wrap" id="resultsWrap">
+    <div class="results-header">
+      <h2>Vaše výsledky</h2>
+      <p>Přehled vašeho sebehodnocení napříč všemi oblastmi</p>
+    </div>
+
+    <div class="overall-score" id="overallScore"></div>
+
+    <div class="radar-wrap">
+      <canvas id="radarCanvas" width="700" height="700"></canvas>
+    </div>
+
+    <div class="cat-results" id="catResults"></div>
+
+    <div class="sw-grid" id="swGrid"></div>
+
+    <div class="btn-row">
+      <button class="btn btn-outline" id="exportResults">Exportovat výsledky (CSV)</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const CATEGORIES = [
+  {
+    name: "Znalost trhu a produktu",
+    questions: [
+      { cz: "Máte důkladné porozumění trhu vašeho produktu?", en: "Do you have thorough understanding of your product's market?" },
+      { cz: "Umíte posoudit a interpretovat číselné signály jako velikost trhu a jeho růst?", en: "Do you know how to assess and interpret numeric signals such as market size, growth?" },
+      { cz: "Víte, kde a jak získávat a udržovat přehled o obecných trendech na trhu vašeho produktu?", en: "Do you know where and how to acquire and maintain knowledge around the general trend in your product's market?" },
+      { cz: "Umíte analyzovat nejen konkurenční produkty, ale i konkurenční firmy a jejich obchodní a go-to-market strategie?", en: "Do you know how to analyze, not only competitive products but also the competitive companies and their associated commercial, business and go-to-market strategies?" },
+      { cz: "Aktivně vyhledávám příležitosti k získávání poznatků o technologických, regulatorních a dalších trendech v odvětví ovlivňujících můj produkt.", en: "I actively seek out opportunities to learn more about technological, regulatory, or other trends and changes in the industry that affect the product I work on." },
+    ]
+  },
+  {
+    name: "Životní cyklus produktu",
+    questions: [
+      { cz: "Umíte vést celý životní cyklus produktu s dobře zavedeným a srozumitelným procesem?", en: "Do you know how to lead the full product life cycle with a well embedded and understood process?" },
+      { cz: "Umím ověřit a prokázat fázi životního cyklu svého produktu jako základ pro posouzení strategických možností.", en: "I can verify and prove my product's life cycle state as a means to assess strategic options." },
+      { cz: "Přizpůsobuji strategii marketingového mixu svého produktu na základě fáze životního cyklu a dalších výkonnostních metrik.", en: "I adjust the marketing mix strategy for my product based on life cycle state and other performance metrics." },
+      { cz: "Vím, kdy ukončit produkt, který již není konkurenceschopný.", en: "I know when to discontinue a product when it is no longer competitively viable." },
+      { cz: "Rozumím obchodním a produktovým strategiím vhodným pro každou fázi životního cyklu produktu (uvedení, růst, zralost, pokles a stažení).", en: "I understand the business and product strategies appropriate to each stage of the product life cycle." },
+      { cz: "Jasně chápu svou roli a sadu odpovědností pro všechny úkoly v průběhu životního cyklu produktu od konceptu po ukončení.", en: "I clearly understand my role and set of responsibilities for all tasks encountered during the product lifecycle." },
+      { cz: "Rozumím všem fázím životního cyklu produktu od konceptu po ukončení.", en: "I understand all phases of the product lifecycle from concept to end of life." },
+      { cz: "Jsem si jistý/á, že vím, jak zajistit úspěch produktu v každé fázi životního cyklu.", en: "I am confident that I know how to ensure product success in each phase of the product lifecycle." },
+    ]
+  },
+  {
+    name: "Vedení a řízení týmů",
+    questions: [
+      { cz: "Umíte vést a řídit mezioborové týmy bez přímé manažerské autority?", en: "Do you know how to lead and manage cross departmental teams without line management authority?" },
+      { cz: "Máte zkušenosti s řízením týmu?", en: "Do you have team management experience?" },
+      { cz: "Snažím se nabízet pomoc a podporu členům svého produktového týmu.", en: "I make it a point to offer help and support to my product team members." },
+      { cz: "Jsem okolím vnímán/a jako flexibilní a přizpůsobivý/á.", en: "I'm seen as flexible and adaptable by others." },
+      { cz: "Jsem schopen/schopna zvládat obtížné situace mezi různými odděleními.", en: "I am comfortable diffusing difficult situations between different departments." },
+    ]
+  },
+  {
+    name: "Go-to-Market a uvedení na trh",
+    questions: [
+      { cz: "Umíte nastavit go-to-market strategie, plánování uvedení na trh, positioning produktu a messaging?", en: "Do you know how to set up go-to-market strategies, launch planning, product positioning and messaging?" },
+      { cz: "Orchestruji uvedení produktu na trh.", en: "I orchestrate a product launch." },
+      { cz: "Orchestruji uvedení nové funkce.", en: "I orchestrate a feature launch." },
+      { cz: "Jsem schopen/schopna napsat efektivní a promyšlený tržní strategii nebo go-to-market plán, který dosahuje obchodních cílů.", en: "I am able to write an effective, well-thought out market strategy or go-to-market plan that achieves business objectives." },
+      { cz: "Umím napsat efektivní plán pro beta testování nebo rané použití zákazníky, abych shromáždil/a dostatek dat pro rozhodnutí o připravenosti produktu k uvedení.", en: "I know how to write an effective Beta or early customer use plan to gather adequate data to make a decision about the launch-readiness of my product." },
+      { cz: "Jsem si jistý/á v řízení zdrojů přidělených k úspěšné podpoře uvedení mého produktu.", en: "I am comfortable managing the resources allocated to successfully support my product launches." },
+      { cz: "Poskytuji nebo výrazně přispívám k základním marketingovým a prodejním materiálům (demo produktu, white papers, prezentace atd.).", en: "I provide, or greatly contribute to, core marketing and selling materials." },
+      { cz: "Úzce spolupracuji s dalšími klíčovými odděleními na úspěšném marketingu svého produktu.", en: "I work closely with other key departments to successfully market my product." },
+      { cz: "Jsem schopen/schopna napsat efektivní a promyšlený plán uvedení produktu na trh, který naplňuje cíle business case.", en: "I am able to write an effective, well-thought out product launch plan that achieves the objectives of the business case." },
+      { cz: "Jsem schopen/schopna napsat efektivní a promyšlený marketingový plán, který naplňuje cíle business case.", en: "I am able to write an effective, well-thought out marketing plan that achieves the objectives of the business case." },
+    ]
+  },
+  {
+    name: "Komunikace a vyjednávání",
+    questions: [
+      { cz: "Ohodnoťte své dovednosti pozitivně vyjednávat za účelem dosažení vzájemné dohody o strategiích, plánech roadmapy a klíčových funkcích.", en: "Assess your skills to negotiate positively for mutual agreement on strategies, roadmap plans and key features?" },
+      { cz: "Ohodnoťte své dovednosti naslouchání a kladení otázek.", en: "Assess your listening and questioning skills." },
+      { cz: "Ohodnoťte své dovednosti písemné komunikace.", en: "Assess your written communication skills." },
+      { cz: "Ohodnoťte své prezentační dovednosti.", en: "Assess your presentation skills." },
+      { cz: "Když vyjednávám s ostatními, dokážu dosáhnout nejlepšího výsledku pro všechny zainteresované strany.", en: "When I negotiate with others, I'm able to obtain the best outcome from all interested parties." },
+      { cz: "Většina lidí, se kterými komunikuji, jasně rozumí tomu, co po nich žádám nebo jim sděluji.", en: "Most people I communicate with understand clearly what I am asking of them or telling them." },
+      { cz: "V pracovních rozhovorech vždy praktikuji aktivní naslouchání.", en: "I always practice active-listening in work conversations." },
+      { cz: "Jsem dobrý/á ve vyjednávání a ovlivňování pro dosažení svých cílů.", en: "I am good at negotiating and influencing to achieve my desired outcomes." },
+      { cz: "Jsem sebejistý/á a kompetentní prezentující, schopný/á komunikovat jak obchodní, tak technickou odbornost.", en: "I am a confident and competent presenter who is able to communicate both business and technical expertise." },
+      { cz: "Jasně komunikuji, jak vize mého produktu navazuje na strategii společnosti.", en: "I clearly communicate how my product's vision aligns with the company's strategy." },
+    ]
+  },
+  {
+    name: "Zákaznický výzkum a analýza",
+    questions: [
+      { cz: "Pozoruji zákazníky při jejich práci, abych porozuměl/a jejich problémům a odhalil/a nenaplněné potřeby.", en: "I observe customers as they do their work to understand their problems and uncover unmet needs." },
+      { cz: "Umím používat analytické nástroje k analýze toho, jak zákazníci používají můj produkt.", en: "I know how to use analytics tools to analyze how customers use my product." },
+      { cz: "Umím vytvářet otázky pro zákaznické rozhovory.", en: "I can create questions for customer interviews." },
+      { cz: "Umím vytvářet persony.", en: "I can create personas." },
+      { cz: "Umím analyzovat data, která pomáhají rozlišit zákazníky na základě používání produktu, ziskovosti, strategické hodnoty a budoucího obchodního potenciálu.", en: "I know how to analyze data that helps to distinguish customers based on product usage, profitability, strategic value, and future business potential." },
+      { cz: "Umím nastavit metriky pro měření adopce, používání a objevování překážek.", en: "I can set up metrics to measure adoption, usage and discover blockers." },
+      { cz: "Umím navrhnout strategii adopce pro nové funkce.", en: "I can propose an adoption strategy for new features." },
+      { cz: "Validuji potřeby zákazníků sdílením designů nebo prototypů.", en: "I validate customer needs by sharing designs or prototypes." },
+      { cz: "Trávím značné množství času se stakeholdery svého produktu (podpora, obchod, partneři), abych porozuměl/a jejich potřebám.", en: "I spend a significant amount of time with my product's stakeholders." },
+      { cz: "Trávím značné množství času se zákazníky svého produktu.", en: "I spend a significant amount of time with my product's customers." },
+      { cz: "Využívám otevřené a relevantní otázky při diskuzích se zákazníky, abych identifikoval/a nenaplněné nebo nedostatečně naplněné potřeby.", en: "I make use of open-ended and relevant questions during customer discussions so that I can identify unmet or poorly met needs." },
+      { cz: "Umím pohodlně se vcítit do svého zákazníka a pochopit jeho problémy z jeho pohledu.", en: "I feel comfortable putting myself in my customer's shoes and understanding their problems from their point of view." },
+    ]
+  },
+  {
+    name: "Konkurenční analýza",
+    questions: [
+      { cz: "Porovnávám funkce konkurenčních produktů s těmi svého produktu, abych identifikoval/a oblasti pro dosažení konkurenční výhody.", en: "I compare the features of competitive products to that of my own product to identify areas to achieve competitive advantage." },
+      { cz: "Vytvářím sdílené porozumění odvětvovým a konkurenčním tržním silám se svým týmem, abychom udrželi tržní zaměření.", en: "I create a shared understanding of industry and competitive market forces with my team to maintain market focus." },
+      { cz: "Předpovídám reakci konkurence na další vydání mého produktu a spolupracuji s obchodem a marketingem na její neutralizaci.", en: "I predict a competitor's response to my next product's release, and work with sales and marketing to counteract such responses." },
+      { cz: "Úzce spolupracuji s obchodem a marketingem na přizpůsobení se konkurenčním krokům.", en: "I work closely with sales and marketing to adjust to competitive moves." },
+      { cz: "Aktualizuji své znalosti o konkurenčních produktech minimálně jednou za čtvrtletí.", en: "I update my knowledge of competitive products no less than once a quarter." },
+    ]
+  },
+  {
+    name: "Cenotvorba",
+    questions: [
+      { cz: "Jsem si jistý/á v nastavení správné ceny pro svůj produkt.", en: "I am confident in setting the correct price for my product." },
+      { cz: "Moje cenová rozhodnutí berou v úvahu obchodní strategii společnosti.", en: "My pricing decisions take into account my company's business strategy." },
+      { cz: "Moje cenová rozhodnutí berou v úvahu celkové cíle pro můj produkt.", en: "My pricing decisions take into account the overall goals for my product." },
+      { cz: "Nastavuji cenu produktu podle hodnoty pro zákazníka.", en: "I set my product's price according to customer value." },
+    ]
+  },
+  {
+    name: "Strategie a vize",
+    questions: [
+      { cz: "Stanovuji vizi, cíle a strategii pro svůj produkt.", en: "I establish a vision, goals, and a strategy for my product." },
+      { cz: "Mám investorský mindset při rozhodování o tom, které produktové nápady by měly být zváženy.", en: "I have an investor's mindset when deciding on what product ideas should be considered." },
+      { cz: "Rozumím a umím používat klíčové strategické nástroje jako SWOT, Porterových pět sil a model Chasm a určovat strategii na základě fáze životního cyklu produktu.", en: "I understand and know how to use key strategic tools like SWOT, Porter's five forces, and the Chasm model." },
+      { cz: "Rozumím, jak aplikovat strategické směřování společnosti na vývoj strategie a vize mého produktu.", en: "I understand how to apply my company's strategic direction to develop my product's strategy and vision." },
+      { cz: "Aktivně hledám nové růstové příležitosti pro svůj produkt.", en: "I actively seek out new growth opportunities for my product." },
+    ]
+  },
+  {
+    name: "Product development a požadavky",
+    questions: [
+      { cz: "Používám dokument produktových požadavků (PRD) ke komunikaci potřeb zákazníků nebo uživatelů vývojářům.", en: "I use a product requirements document (PRD) to communicate customer or user needs to developers." },
+      { cz: "Zajišťuji, aby se vývojáři mého produktu soustředili a produkt byl vyvíjen dle požadavků nebo uživatelsky řízených popisů funkcí.", en: "I ensure that the developers of my product remain focused and that the product is developed per the requirements." },
+      { cz: "Vytvářím seznamy funkcí (feature backlogy) a plánuji produktové releasy v souladu s vizí a strategií produktu.", en: "I create feature lists (feature backlogs) and plan product releases that are aligned with my product vision and strategy." },
+      { cz: "Používám experimenty nebo jiné techniky k rozhodování o optimálních funkcích.", en: "I use experiments or other techniques to decide on the optimal features." },
+      { cz: "Moje produktové požadavky jsou jasné, stručné a odrážejí aktuální tržní okolnosti.", en: "My product requirements are clear, concise, and reflect current market circumstances." },
+      { cz: "Stakeholdeři mého produktu rozumějí a souhlasí s obchodním zdůvodněním produktu.", en: "The stakeholders for my product understand and agree with the business justification for the product." },
+      { cz: "Stakeholdeři mého produktu rozumějí a souhlasí s finální prioritizací funkcí.", en: "The stakeholders for my product understand and agree with the final feature prioritization." },
+      { cz: "Poskytuji jasné mapování mezi funkcemi produktu a tržními problémy, které řeší.", en: "I provide a clear mapping between product features and the market problems they solve." },
+      { cz: "Mám jasný formát pro předávání tržních/zákaznických požadavků vývojářům produktu.", en: "I have a clear format for providing market/customer requirements to my product developers." },
+      { cz: "Vytvářím efektivní uživatelské příběhy (user stories) pro svůj vývojový tým.", en: "I create effective user stories for my development team." },
+    ]
+  },
+  {
+    name: "Obchod, finance a výkonnost",
+    questions: [
+      { cz: "Efektivně řídím svůj čas a pracovní zátěž.", en: "I effectively manage my time and my workload." },
+      { cz: "Při prioritizaci se zaměřuji na strategicky důležité položky s ohledem na pozitivní obchodní přínos.", en: "When I prioritize, I focus on items that are strategically important with an eye toward positive business contributions." },
+      { cz: "Pravidelně hodnotím obchodní a finanční výkonnost svého produktu, abych zajistil/a, že produkt přispívá k cílům firmy.", en: "I routinely evaluate my product's business and financial performance." },
+      { cz: "Používám produktový business scorecard k zobrazení celkového zdraví svého produktu.", en: "I use a product business scorecard to portray the overall health of my product." },
+      { cz: "Hodnotím tržní podíl a míru tržní penetrace svého produktu.", en: "I evaluate market share and market penetration rates for my product." },
+      { cz: "Umím vytvořit výkaz zisků a ztrát a provést analýzu návratnosti investic (ROI) a doby návratnosti.", en: "I can create a profit and loss statement, and do Return on Investment (ROI) and payback analysis." },
+      { cz: "Jsem schopen/schopna napsat efektivní business case, který podporuje správná investiční rozhodnutí.", en: "I'm able to write an effective business case that supports the making of sound investment decisions." },
+      { cz: "Rozumím, kdo používá moje predikce a jaký celkový dopad mají moje rozhodnutí o predikcích.", en: "I understand who uses my forecasts and the overall impact of my forecasting decisions." },
+      { cz: "Dokážu zdůvodnit myšlenky a předpoklady za mými predikcemi.", en: "I can justify the thinking and assumptions behind my forecasts." },
+      { cz: "Moje predikce jsou dostatečně přesné, aby naplnily potřeby obchodu a produktových stakeholderů.", en: "My forecasts are accurate enough to meet the needs of the business and product stakeholders." },
+      { cz: "Plně rozumím tomu, které aspekty mého produktu přímo přispívají k tržbám a/nebo cílům společnosti.", en: "I fully understand which aspects of my product directly contribute to revenues and/or company objectives." },
+      { cz: "Jsem schopen/schopna vytvořit positioning produktu, stanovit unikátní prodejní argumenty a jasně popsat přínosy produktu pro zákazníky.", en: "I am able to create product positioning, establish unique selling propositions, and clearly describe customer benefits." },
+      { cz: "Můj vliv zajišťuje, že můj produkt dostává dostatečnou pozornost a zdroje.", en: "My influence ensures my product receives adequate attention and resources." },
+    ]
+  },
+  {
+    name: "Segmentace a targeting",
+    questions: [
+      { cz: "Umím segmentovat zákazníky do cílových trhů, abych mohl/a vybrat nejatraktivnější trhy.", en: "I know how to segment customers into target markets so that I can select the most attractive markets." },
+      { cz: "Umím provádět tržní segmentaci a rozvíjet positioningové strategie, které řídí mou tržní strategii a marketingové aktivity.", en: "I know how to conduct market segmentation and develop positioning strategies." },
+      { cz: "Mám jasnou messagingovou platformu, kterou používám k lepší komunikaci přínosů produktu interním cílovým skupinám.", en: "I have a clear messaging platform which I use to better communicate product benefits to internal audiences." },
+    ]
+  },
+  {
+    name: "Řízení vztahů a očekávání",
+    questions: [
+      { cz: "Rozvíjím a udržuji pozitivní vztahy se zákazníky.", en: "I develop and maintain positive customer relationships." },
+      { cz: "Jsem schopen/schopna řídit očekávání zákazníků a stakeholderů ohledně termínů dodání produktu a funkcí.", en: "I am able to manage customer and stakeholder expectations regarding product and feature/capability delivery timelines." },
+      { cz: "Dokážu předvídat výsledky, které mé kroky budou mít na ostatní v organizaci.", en: "I'm able to predict the results that my actions will have on others in the organization." },
+    ]
+  },
+];
+
+// State
+let answers = JSON.parse(localStorage.getItem('pmAssessment') || '{}');
+
+const container = document.getElementById('questionsContainer');
+let qIndex = 0;
+
+CATEGORIES.forEach((cat, ci) => {
+  const section = document.createElement('div');
+  section.className = 'section';
+  section.innerHTML = `<div class="section-header">${cat.name} <span class="section-badge">${cat.questions.length} otázek</span></div>`;
+
+  cat.questions.forEach((q, qi) => {
+    const id = `q_${ci}_${qi}`;
+    qIndex++;
+    const saved = answers[id];
+    const card = document.createElement('div');
+    card.className = 'q-card' + (saved !== undefined ? ' answered' : '');
+    card.innerHTML = `
+      <div class="q-num">Otázka ${qIndex}</div>
+      <div class="q-text">${q.cz}</div>
+      <div class="q-original">${q.en}</div>
+      <div class="slider-wrap">
+        <div class="slider-labels"><span>1 — Začátečník</span><span>10 — Expert</span></div>
+        <input type="range" min="1" max="10" value="${saved || 5}" id="${id}" data-id="${id}" ${saved === undefined ? 'class="untouched"' : ''}>
+        <div class="slider-ticks">${Array(10).fill('<span></span>').join('')}</div>
+        <div class="slider-value ${saved === undefined ? 'empty' : ''}" id="val_${id}">${saved !== undefined ? saved : 'Posuňte posuvník'}</div>
+      </div>
+    `;
+    section.appendChild(card);
+  });
+  container.appendChild(section);
+});
+
+const totalQ = qIndex;
+
+// Slider interactions
+document.querySelectorAll('input[type="range"]').forEach(slider => {
+  slider.addEventListener('input', function() {
+    const id = this.dataset.id;
+    const val = parseInt(this.value);
+    answers[id] = val;
+    localStorage.setItem('pmAssessment', JSON.stringify(answers));
+
+    const display = document.getElementById('val_' + id);
+    display.textContent = val;
+    display.classList.remove('empty');
+    this.classList.remove('untouched');
+    this.closest('.q-card').classList.add('answered');
+
+    updateProgress();
+  });
+});
+
+function updateProgress() {
+  const answered = Object.keys(answers).length;
+  const pct = Math.round(answered / totalQ * 100);
+  document.getElementById('progressBar').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${answered} / ${totalQ} zodpovězeno`;
+  document.getElementById('progressPct').textContent = pct + ' %';
+  document.getElementById('showResults').disabled = answered < totalQ;
+  // Enable even if not all answered but > 50%
+  if (answered >= Math.ceil(totalQ * 0.5)) document.getElementById('showResults').disabled = false;
+}
+
+updateProgress();
+
+// Show results
+document.getElementById('showResults').addEventListener('click', () => {
+  computeResults();
+  document.getElementById('resultsWrap').classList.add('visible');
+  document.getElementById('resultsWrap').scrollIntoView({ behavior: 'smooth' });
+});
+
+// Reset
+document.getElementById('resetAll').addEventListener('click', () => {
+  if (!confirm('Opravdu chcete smazat všechny odpovědi?')) return;
+  answers = {};
+  localStorage.removeItem('pmAssessment');
+  document.querySelectorAll('input[type="range"]').forEach(s => {
+    s.value = 5; s.classList.add('untouched');
+    s.closest('.q-card').classList.remove('answered');
+  });
+  document.querySelectorAll('.slider-value').forEach(v => { v.textContent = 'Posuňte posuvník'; v.classList.add('empty'); });
+  document.getElementById('resultsWrap').classList.remove('visible');
+  updateProgress();
+});
+
+function computeResults() {
+  const catScores = [];
+  const allScored = [];
+
+  CATEGORIES.forEach((cat, ci) => {
+    let sum = 0, count = 0;
+    cat.questions.forEach((q, qi) => {
+      const id = `q_${ci}_${qi}`;
+      if (answers[id] !== undefined) {
+        sum += answers[id];
+        count++;
+        allScored.push({ cz: q.cz, score: answers[id], cat: cat.name });
+      }
+    });
+    const avg = count ? sum / count : 0;
+    catScores.push({ name: cat.name, avg: Math.round(avg * 10) / 10, count, total: cat.questions.length });
+  });
+
+  const overallAvg = catScores.reduce((s, c) => s + c.avg, 0) / catScores.length;
+  const rounded = Math.round(overallAvg * 10) / 10;
+
+  let level = '';
+  if (rounded <= 2) level = 'Začátečník';
+  else if (rounded <= 4) level = 'Mírně pokročilý';
+  else if (rounded <= 6) level = 'Pokročilý';
+  else if (rounded <= 8) level = 'Kompetentní';
+  else level = 'Expert';
+
+  document.getElementById('overallScore').innerHTML = `
+    <div class="big">${rounded}</div>
+    <div class="of">/ 10</div>
+    <div class="label">Celkové průměrné skóre</div>
+    <div class="level">${level}</div>
+  `;
+
+  // Category cards
+  const catEl = document.getElementById('catResults');
+  catEl.innerHTML = catScores.map(c => {
+    const pct = c.avg / 10 * 100;
+    const color = c.avg >= 7 ? 'var(--green)' : c.avg >= 5 ? 'var(--amber)' : 'var(--red)';
+    let lvl = c.avg <= 2 ? 'Začátečník' : c.avg <= 4 ? 'Mírně pokročilý' : c.avg <= 6 ? 'Pokročilý' : c.avg <= 8 ? 'Kompetentní' : 'Expert';
+    return `
+      <div class="cat-card">
+        <div class="cat-name">${c.name}</div>
+        <div class="cat-bar-outer"><div class="cat-bar-inner" style="width:${pct}%;background:${color}"></div></div>
+        <div class="cat-score" style="color:${color}">${c.avg}</div>
+        <div class="cat-level">${lvl} · ${c.count}/${c.total} zodpovězeno</div>
+      </div>
+    `;
+  }).join('');
+
+  // Strengths / Weaknesses
+  allScored.sort((a, b) => b.score - a.score);
+  const top5 = allScored.slice(0, 5);
+  const bot5 = allScored.slice(-5).reverse();
+  const swEl = document.getElementById('swGrid');
+  swEl.innerHTML = `
+    <div class="sw-card">
+      <h3><span style="color:var(--green)">&#9650;</span> Silné stránky</h3>
+      <ul>${top5.map(q => `<li>${q.cz} <span class="sw-score" style="color:var(--green)">${q.score}</span></li>`).join('')}</ul>
+    </div>
+    <div class="sw-card">
+      <h3><span style="color:var(--red)">&#9660;</span> Oblasti ke zlepšení</h3>
+      <ul>${bot5.map(q => `<li>${q.cz} <span class="sw-score" style="color:var(--red)">${q.score}</span></li>`).join('')}</ul>
+    </div>
+  `;
+
+  // Radar chart
+  drawRadar(catScores);
+}
+
+function drawRadar(catScores) {
+  const canvas = document.getElementById('radarCanvas');
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = 700 * dpr;
+  canvas.height = 700 * dpr;
+  canvas.style.width = '700px';
+  canvas.style.height = '700px';
+  const ctx = canvas.getContext('2d');
+  ctx.scale(dpr, dpr);
+  const W = 700, H = 700;
+  const cx = W / 2, cy = H / 2;
+  const R = 200;
+  const LABEL_R = R + 45;
+  const n = catScores.length;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Grid
+  for (let ring = 2; ring <= 10; ring += 2) {
+    ctx.beginPath();
+    for (let i = 0; i <= n; i++) {
+      const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
+      const r = R * ring / 10;
+      const x = cx + r * Math.cos(angle);
+      const y = cy + r * Math.sin(angle);
+      if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+
+    const labelAngle = -Math.PI / 2;
+    ctx.fillStyle = '#aaa';
+    ctx.font = '11px sans-serif';
+    ctx.textAlign = 'left';
+    ctx.fillText(ring, cx + R * ring / 10 * Math.cos(labelAngle) + 4, cy + R * ring / 10 * Math.sin(labelAngle) + 4);
+  }
+
+  // Spokes
+  for (let i = 0; i < n; i++) {
+    const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + R * Math.cos(angle), cy + R * Math.sin(angle));
+    ctx.strokeStyle = '#e5e7eb';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+
+  // Data polygon
+  ctx.beginPath();
+  catScores.forEach((c, i) => {
+    const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
+    const r = R * c.avg / 10;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+    if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+  });
+  ctx.closePath();
+  ctx.fillStyle = 'rgba(99, 102, 241, 0.2)';
+  ctx.fill();
+  ctx.strokeStyle = '#6366f1';
+  ctx.lineWidth = 2.5;
+  ctx.stroke();
+
+  // Dots and labels
+  catScores.forEach((c, i) => {
+    const angle = (Math.PI * 2 / n) * i - Math.PI / 2;
+    const r = R * c.avg / 10;
+    const x = cx + r * Math.cos(angle);
+    const y = cy + r * Math.sin(angle);
+
+    ctx.beginPath();
+    ctx.arc(x, y, 4, 0, Math.PI * 2);
+    ctx.fillStyle = '#6366f1';
+    ctx.fill();
+    ctx.strokeStyle = '#fff';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Label position
+    const lx = cx + LABEL_R * Math.cos(angle);
+    const ly = cy + LABEL_R * Math.sin(angle);
+    ctx.fillStyle = '#1a1a2e';
+    ctx.font = '12px -apple-system, sans-serif';
+
+    // Text alignment based on position around the circle
+    const normAngle = ((angle % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2);
+    if (normAngle > Math.PI * 0.75 && normAngle < Math.PI * 1.25) {
+      ctx.textAlign = 'right';
+    } else if (normAngle < Math.PI * 0.25 || normAngle > Math.PI * 1.75) {
+      ctx.textAlign = 'left';
+    } else if (normAngle >= Math.PI * 0.25 && normAngle <= Math.PI * 0.75) {
+      ctx.textAlign = 'left';
+    } else {
+      ctx.textAlign = 'right';
+    }
+
+    // Top and bottom labels centered
+    const deg = normAngle * 180 / Math.PI;
+    if (deg > 250 && deg < 290) ctx.textAlign = 'center';
+    if (deg > 70 && deg < 110) ctx.textAlign = 'center';
+
+    ctx.textBaseline = 'middle';
+
+    // Word wrap
+    const words = c.name.split(' ');
+    let lines = [];
+    let current = '';
+    words.forEach(w => {
+      if ((current + ' ' + w).length > 18 && current) { lines.push(current); current = w; }
+      else { current = current ? current + ' ' + w : w; }
+    });
+    if (current) lines.push(current);
+    lines.forEach((line, li) => {
+      ctx.fillText(line, lx, ly + (li - (lines.length - 1) / 2) * 15);
+    });
+  });
+}
+
+// Export CSV
+document.getElementById('exportResults').addEventListener('click', () => {
+  const rows = [['Kategorie', 'Otázka CZ', 'Otázka EN', 'Skóre'].join(';')];
+  CATEGORIES.forEach((cat, ci) => {
+    cat.questions.forEach((q, qi) => {
+      const id = `q_${ci}_${qi}`;
+      const score = answers[id] !== undefined ? answers[id] : '';
+      rows.push([`"${cat.name}"`, `"${q.cz}"`, `"${q.en}"`, score].join(';'));
+    });
+  });
+  const blob = new Blob(['\uFEFF' + rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'pm_sebehodnoceni.csv';
+  a.click();
+});
+</script>
+</body>
+</html>
