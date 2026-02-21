@@ -151,6 +151,15 @@
   .sw-card li { font-size: 13px; padding: 4px 0; border-bottom: 1px solid var(--border); }
   .sw-card li:last-child { border: none; }
   .sw-card li .sw-score { float: right; font-weight: 600; }
+
+  /* Submit */
+  .submit-wrap { text-align: center; margin: 28px 0; }
+  .btn-success { background: var(--green); color: #fff; }
+  .btn-success:hover { background: #059669; transform: translateY(-1px); box-shadow: var(--shadow-lg); }
+  .btn-success:disabled { opacity: 0.5; cursor: not-allowed; transform: none; box-shadow: none; }
+  .submit-status { margin-top: 12px; font-size: 14px; font-weight: 500; }
+  .submit-status.success { color: var(--green); }
+  .submit-status.error { color: var(--red); }
 </style>
 </head>
 <body>
@@ -203,6 +212,11 @@
     <div class="cat-results" id="catResults"></div>
 
     <div class="sw-grid" id="swGrid"></div>
+
+    <div class="submit-wrap">
+      <button class="btn btn-success" id="submitResults" style="font-size:17px; padding: 14px 40px;">Odeslat výsledky</button>
+      <div class="submit-status" id="submitStatus"></div>
+    </div>
 
     <div class="btn-row">
       <button class="btn btn-outline" id="exportResults">Exportovat výsledky (CSV)</button>
@@ -690,6 +704,62 @@ document.getElementById('exportResults').addEventListener('click', () => {
   a.href = URL.createObjectURL(blob);
   a.download = 'pm_sebehodnoceni.csv';
   a.click();
+});
+
+// Submit to Google Sheets
+const SHEET_URL = 'https://script.google.com/macros/s/AKfycbx2KB5_TthrDEu2tSJ5_31zXiVf6C9jW9GVvBqiIfwlAz7Iuyb-U89wIGr4zEtfXQpMfg/exec';
+
+document.getElementById('submitResults').addEventListener('click', function() {
+  const btn = this;
+  const status = document.getElementById('submitStatus');
+
+  // Build payload
+  const catData = [];
+  const answerData = [];
+  let totalSum = 0, totalCount = 0;
+
+  CATEGORIES.forEach((cat, ci) => {
+    let sum = 0, count = 0;
+    cat.questions.forEach((q, qi) => {
+      const id = `q_${ci}_${qi}`;
+      const score = answers[id] !== undefined ? answers[id] : null;
+      answerData.push({ question: q.cz, score: score });
+      if (score !== null) { sum += score; count++; totalSum += score; totalCount++; }
+    });
+    catData.push({ name: cat.name, avg: count ? Math.round(sum / count * 10) / 10 : null, count, total: cat.questions.length });
+  });
+
+  const overallScore = totalCount ? Math.round(totalSum / totalCount * 10) / 10 : 0;
+
+  const payload = {
+    name: 'Anonymní',
+    email: '',
+    overallScore: overallScore,
+    categories: catData,
+    answers: answerData
+  };
+
+  btn.disabled = true;
+  btn.textContent = 'Odesílám...';
+  status.textContent = '';
+
+  fetch(SHEET_URL, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+  .then(() => {
+    status.textContent = 'Odpovědi byly úspěšně odeslány!';
+    status.className = 'submit-status success';
+    btn.textContent = 'Odesláno';
+  })
+  .catch(err => {
+    status.textContent = 'Chyba při odesílání. Zkuste to znovu.';
+    status.className = 'submit-status error';
+    btn.disabled = false;
+    btn.textContent = 'Odeslat výsledky';
+  });
 });
 </script>
 </body>
