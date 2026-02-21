@@ -184,6 +184,7 @@
 
   <div class="btn-row">
     <button class="btn btn-primary" id="showResults" disabled>Zobrazit výsledky</button>
+    <p style="font-size:13px; color:var(--muted); width:100%; text-align:center;">Všechny otázky jsou volitelné — výsledky se zobrazí na základě zodpovězených otázek.</p>
     <button class="btn btn-outline" id="resetAll">Resetovat vše</button>
   </div>
 
@@ -430,9 +431,7 @@ function updateProgress() {
   document.getElementById('progressBar').style.width = pct + '%';
   document.getElementById('progressText').textContent = `${answered} / ${totalQ} zodpovězeno`;
   document.getElementById('progressPct').textContent = pct + ' %';
-  document.getElementById('showResults').disabled = answered < totalQ;
-  // Enable even if not all answered but > 50%
-  if (answered >= Math.ceil(totalQ * 0.5)) document.getElementById('showResults').disabled = false;
+  document.getElementById('showResults').disabled = answered === 0;
 }
 
 updateProgress();
@@ -476,7 +475,8 @@ function computeResults() {
     catScores.push({ name: cat.name, avg: Math.round(avg * 10) / 10, count, total: cat.questions.length });
   });
 
-  const overallAvg = catScores.reduce((s, c) => s + c.avg, 0) / catScores.length;
+  const answeredCats = catScores.filter(c => c.count > 0);
+  const overallAvg = answeredCats.length ? answeredCats.reduce((s, c) => s + c.avg, 0) / answeredCats.length : 0;
   const rounded = Math.round(overallAvg * 10) / 10;
 
   let level = '';
@@ -486,16 +486,27 @@ function computeResults() {
   else if (rounded <= 8) level = 'Kompetentní';
   else level = 'Expert';
 
+  const totalAnswered = allScored.length;
   document.getElementById('overallScore').innerHTML = `
     <div class="big">${rounded}</div>
     <div class="of">/ 10</div>
-    <div class="label">Celkové průměrné skóre</div>
+    <div class="label">Celkové průměrné skóre (${totalAnswered} / ${totalQ} otázek zodpovězeno)</div>
     <div class="level">${level}</div>
   `;
 
   // Category cards
   const catEl = document.getElementById('catResults');
   catEl.innerHTML = catScores.map(c => {
+    if (c.count === 0) {
+      return `
+        <div class="cat-card" style="opacity:0.5">
+          <div class="cat-name">${c.name}</div>
+          <div class="cat-bar-outer"><div class="cat-bar-inner" style="width:0%"></div></div>
+          <div class="cat-score" style="color:var(--muted)">—</div>
+          <div class="cat-level">Nezodpovězeno</div>
+        </div>
+      `;
+    }
     const pct = c.avg / 10 * 100;
     const color = c.avg >= 7 ? 'var(--green)' : c.avg >= 5 ? 'var(--amber)' : 'var(--red)';
     let lvl = c.avg <= 2 ? 'Začátečník' : c.avg <= 4 ? 'Mírně pokročilý' : c.avg <= 6 ? 'Pokročilý' : c.avg <= 8 ? 'Kompetentní' : 'Expert';
